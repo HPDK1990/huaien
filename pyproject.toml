@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "huaien"
+version = "0.4.3"
+description = "怀恩 — 极简前台管家界面。背后是本机 Hermes Agent 的独立人格。"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+keywords = ["hermes", "agent", "gui", "tkinter", "minimal"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Win32 (MS Windows)",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Natural Language :: Chinese (Simplified)",
+]
+dependencies = []
+
+[project.optional-dependencies]
+# 只在跑测试/自检时需要; 运行时零第三方依赖。
+#
+# ⚠️ PyYAML / psutil 必须**显式声明** —— 曾经它们是靠
+#    PYTHONPATH 蹭到 Hermes 环境的包, 一旦把 PYTHONPATH 清干净
+#    (huaien/runtime.py 干的就是这事) 就会 ModuleNotFoundError。
+#    依赖声明必须完整, 不能靠运行环境兜底。
+dev = ["pytest>=8", "ruff>=0.6", "Pillow>=10", "PyYAML>=6", "psutil>=5"]
+
+[project.scripts]
+huaien = "huaien.app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["huaien"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+# 这个测试依赖 Hermes home 里的脚本, 不属于本仓库
+exclude = ["tests/test_weixin_guard.py"]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# 自检/看门狗脚本要能直接跑, 顶层脚本放宽导入顺序
+"scripts/*.py" = ["E402"]

@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 运行期产物
+*.log
+logs/
+app_launch.log
+final_bat.log
+dash_run*.log
+
+# 敏感信息 (绝不提交)
+.env
+*.env
+secrets.json
+auth.json
+credentials*
+*.key
+*.pem
+dashboard_login_tmp.json
+
+# 截图 (可选: 想保留就删掉这两行)
+docs/shot_*.png
+
+# GitHub 下载验收测试目录 (克隆的公开副本 + 独立 venv)
+# ⚠️ 必须忽略 —— 里面是嵌套 git 仓, 不挡会被当 submodule 提交
+GITHUB测试/
+
+# 工具缓存 (含**绝对路径** —— 提交上去等于泄露机器路径)
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# 微信通道守护者的测试 —— 被守护脚本在 Hermes home, 不在项目里。
+# 依赖仓库外的文件 + 含硬编码用户路径, 进公开仓必然跑不通。
+tests/test_weixin_guard.py
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 会话库体检产物
+session_inventory_*.txt
+
+# 临时审计产物
+docs/_audit_tmp.json
+docs/看门狗日志.md
+
+# 版本封存包里的源码 zip —— 二进制, GitHub 上用 git tag 就够
+versions/*/*.zip
+
+# 会话库备份 (每次优化生成, 单个 300+ MB, 不进版本库)
+versions/backup/
+*.orig
+versions/*/截图/shot_*.png
+docs/*.png
+!docs/drill/*.png
