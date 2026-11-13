@@ -1,0 +1,179 @@
+{
+  "_comment": [
+    "This file is the machine-readable contract between huaien and the Hermes CLI.",
+    "It is not documentation - it is an assertion. tests/test_hermes_contract.py",
+    "verifies every entry against the installed Hermes and fails loudly when the",
+    "upstream install changes an interface huaien depends on.",
+    "",
+    "Why: huaien is a separate program that drives Hermes through its command",
+    "line. A Hermes upgrade that renames a flag or reshapes a JSON payload would",
+    "otherwise break huaien silently (an empty read, a report that never ships).",
+    "This file turns 'we hope the upgrade is compatible' into a red/green test.",
+    "",
+    "Adding an entry: put the dependency in `used_by` so a failure names the",
+    "huaien file that has to be adjusted."
+  ],
+  "cli": {
+    "binary": "hermes",
+    "version_probe": [
+      "--version"
+    ],
+    "subcommands": {
+      "kanban list": {
+        "flags": [
+          "--json"
+        ],
+        "used_by": [
+          "scripts/report.py",
+          "huaien/bridge.py"
+        ]
+      },
+      "kanban show": {
+        "flags": [
+          "--json"
+        ],
+        "used_by": [
+          "scripts/report.py",
+          "scripts/butler.py"
+        ]
+      },
+      "kanban create": {
+        "flags": [],
+        "used_by": [
+          "scripts/butler_run.py"
+        ]
+      },
+      "kanban swarm": {
+        "flags": [
+          "--json"
+        ],
+        "used_by": [
+          "scripts/butler_run.py"
+        ]
+      },
+      "kanban link": {
+        "flags": [],
+        "used_by": [
+          "scripts/butler_run.py"
+        ]
+      },
+      "kanban reclaim": {
+        "flags": [],
+        "used_by": [
+          "scripts/butler.py"
+        ]
+      },
+      "send": {
+        "flags": [
+          "-f",
+          "-t",
+          "--json"
+        ],
+        "used_by": [
+          "scripts/report.py",
+          "scripts/wechat_send.py"
+        ]
+      },
+      "gateway status": {
+        "flags": [],
+        "used_by": [
+          "scripts/watchdog.py"
+        ]
+      },
+      "gateway start": {
+        "flags": [],
+        "used_by": [
+          "scripts/watchdog.py"
+        ]
+      },
+      "gateway stop": {
+        "flags": [],
+        "used_by": [
+          "scripts/watchdog.py"
+        ]
+      },
+      "profile list": {
+        "flags": [],
+        "used_by": [
+          "scripts/regression_check.py"
+        ]
+      },
+      "cron list": {
+        "flags": [],
+        "used_by": [
+          "scripts/regression_check.py"
+        ]
+      },
+      "fallback list": {
+        "flags": [],
+        "used_by": [
+          "scripts/regression_check.py"
+        ]
+      }
+    },
+    "global_flags": [
+      "-z",
+      "-p",
+      "-m",
+      "--provider"
+    ],
+    "oneshot_note": "`-z` is the one-shot prompt flag. `-q` is NOT global - it is a subcommand argument of `hermes chat`, so `hermes -q ...` fails."
+  },
+  "json_shapes": {
+    "kanban show --json": {
+      "root_keys": [
+        "task"
+      ],
+      "note": "The payload nests the task under a `task` key. Reading `json['id']` returns None and looks like an empty task instead of an error.",
+      "used_by": [
+        "scripts/report.py",
+        "scripts/butler.py"
+      ]
+    }
+  },
+  "files": {
+    "gateway_lock": {
+      "rel": "gateway.lock",
+      "json_keys": [
+        "pid",
+        "kind"
+      ],
+      "note": "Authoritative record of the live gateway process. gateway_state.json can be stale right after a crash.",
+      "used_by": [
+        "scripts/watchdog.py"
+      ]
+    },
+    "gateway_heartbeat": {
+      "rel": "state/gateway.heartbeat",
+      "mtime_must_advance": true,
+      "used_by": [
+        "scripts/watchdog.py"
+      ]
+    },
+    "state_db": {
+      "rel": "state.db",
+      "tables": {
+        "messages": [
+          "session_id",
+          "role",
+          "timestamp",
+          "content"
+        ],
+        "sessions": [
+          "id",
+          "source",
+          "chat_id",
+          "session_key",
+          "model"
+        ],
+        "session_admissions": [
+          "status"
+        ]
+      },
+      "used_by": [
+        "scripts/db_health.py",
+        "scripts/clean_state_meta.py"
+      ]
+    }
+  }
+}
