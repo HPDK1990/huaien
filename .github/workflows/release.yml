@@ -1,0 +1,84 @@
+# 自动创建 GitHub Release
+#
+# tag 推上来就自动生成 Release —— 不用手工点页面。
+#
+# ⚠️ 为什么不用本地脚本推 Release:
+#    创建 Release 需要 **写权限的 token** (PAT)。
+#    开发者手上的 PAT 通常是只读的 (只读 Public Repos 够看不够写),
+#    而 workflow 里的 GITHUB_TOKEN **自带 contents: write** ——
+#    这是官方推荐做法, 不依赖任何个人凭据。
+name: 自动发布 Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  # 手动补发用: Actions 页面 → 本 workflow → Run workflow
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要发布的 tag (如 v0.4.3)"
+        required: true
+
+permissions:
+  contents: write   # 创建 Release 需要
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - name: 准备 Release 说明
+        id: notes
+        shell: bash
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          # 说明文件在仓库里 —— 跟代码一起版本化, 不用另存一份
+          if [ -f "docs/RELEASE_NOTES_${TAG}.md" ]; then
+            BODY="docs/RELEASE_NOTES_${TAG}.md"
+          elif [ -f "docs/RELEASE_NOTES.md" ]; then
+            BODY="docs/RELEASE_NOTES.md"
+          else
+            BODY=""
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "body=$BODY" >> "$GITHUB_OUTPUT"
+          echo "说明文件: ${BODY:-（无，用自动生成的）}"
+
+      - name: 创建 Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.notes.outputs.tag }}
+          BODY_FILE: ${{ steps.notes.outputs.body }}
+        run: |
+          set -euo pipefail
+          if [ -n "$BODY_FILE" ]; then
+            if gh release view "$TAG" >/dev/null 2>&1; then
+              # 已存在 → 更新正文 (tag 被移到新提交时正文也要跟着变)
+              gh release edit "$TAG" --title "$TAG" --notes-file "$BODY_FILE"
+              echo "✅ Release $TAG 已更新"
+            else
+              gh release create "$TAG" --title "$TAG" --notes-file "$BODY_FILE"
+              echo "✅ Release $TAG 已创建"
+            fi
+          elif gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG 已存在, 无说明文件可更新"
+          else
+            gh release create "$TAG" --title "$TAG" --generate-notes
+            echo "✅ Release $TAG 已创建"
+          fi
+
+      - name: 验证
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.notes.outputs.tag }}
+        run: |
+          gh release view "$TAG" --json tagName,name,url,isDraft,isPrerelease \
+            --jq '"tag=\(.tagName) name=\(.name) draft=\(.isDraft) pre=\(.isPrerelease) url=\(.url)"'

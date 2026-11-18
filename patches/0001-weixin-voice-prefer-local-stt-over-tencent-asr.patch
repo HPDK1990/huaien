@@ -1,0 +1,41 @@
+diff --git a/plugins/platforms/weixin/adapter.py b/plugins/platforms/weixin/adapter.py
+index 988dd8b289..2b9c2eb823 100644
+--- a/plugins/platforms/weixin/adapter.py
++++ b/plugins/platforms/weixin/adapter.py
+@@ -528,7 +528,36 @@ def _coerce_bool(value: Any, default: bool = True) -> bool:
+     return True if text in {"1", "true", "yes", "on"} else False if text in {"0", "false", "no", "off"} else default
+ 
+ 
++def _has_raw_voice_audio(item_list: list[dict[str, Any]]) -> bool:
++    """这条消息里有没有**可下载的原始语音**。
++
++    微信把一条语音同时放成两个 item:
++      - ``text_item``   = 腾讯云 ASR 的文字 (质量差, 中文常被转成英文乱码)
++      - ``voice_item``  = 原始音频 (带 media 块, 可下载)
++
++    只要原始音频在, 就**必须走本地 STT** —— 腾讯那份 ASR 不能信。
++    """
++    for item in item_list:
++        if item.get("type") == ITEM_VOICE:
++            voice_item = item.get("voice_item") or {}
++            if (voice_item.get("media") or {}) and (
++                voice_item.get("media", {}).get("encrypt_query_param")
++                or voice_item.get("media", {}).get("full_url")
++            ):
++                return True
++    return False
++
++
+ def _extract_text(item_list: list[dict[str, Any]]) -> str:
++    # ⚠️ **语音优先走本地 STT** —— 微信把腾讯云 ASR 的文字塞在 text_item 里,
++    # 而那份文字对中文极不可靠 (实测中文语音被转成 "before the government
++    # before the government")。只要原始音频能下载, 就**不要**用腾讯的 ASR,
++    # 返回空让 gateway 的中央 STT 处理下载到的音频。
++    #
++    # 原实现先扫 ITEM_TEXT, 于是腾讯的 ASR 文本永远赢, 本地 STT 根本没机会跑
++    # —— 这就是"怀恩收到的语音是转坏的文字"的根因。
++    if _has_raw_voice_audio(item_list):
++        return ""
+     for item in item_list:
+         if item.get("type") == ITEM_TEXT:
+             text = str((item.get("text_item") or {}).get("text") or "")
